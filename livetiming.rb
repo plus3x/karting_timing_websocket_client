@@ -10,10 +10,13 @@ IDS = {
   narvskaya: 786
 }
 
+puts 'Initiate evenmachine'
+
 EventMachine.run do
   ws = WebSocket::EventMachine::Client.connect(uri: LIVETIMING_WEBSOCKET_URI)
 
   ws.onopen do
+    puts 'Start subscription'
     ws.send "START Karting@#{IDS[:pulkovo]}"
   end
 
