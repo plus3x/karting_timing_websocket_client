@@ -1,5 +1,8 @@
 require 'websocket-eventmachine-client'
 
+# https://devcenter.heroku.com/articles/logging
+$stdout.sync = true
+
 LIVETIMING_WEBSOCKET_URI = 'ws://livetiming.sms-timing.com:10001'
 IDS = {
   pulkovo: 586,
