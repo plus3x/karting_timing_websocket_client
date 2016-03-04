@@ -1,4 +1,5 @@
-require 'websocket-eventmachine-client'
+require 'faye/websocket'
+require 'eventmachine'
 require 'webrick'
 
 # https://devcenter.heroku.com/articles/logging
@@ -11,43 +12,57 @@ IDS = {
   narvskaya: 786
 }
 
+place = :pulkovo
+last_message_was_at = 0
+
 puts 'Initiate evenmachine'
 
-Thread.new do
-  EventMachine.run do
-    ws = WebSocket::EventMachine::Client.connect(uri: LIVETIMING_WEBSOCKET_URI)
+begin
+  Thread.new do
+    EventMachine.run do
+      ws = Faye::WebSocket::Client.new(LIVETIMING_WEBSOCKET_URI)
 
-    ws.onopen do
-      puts 'Start subscription'
-      ws.send "START Karting@#{IDS[:pulkovo]}"
-    end
+      EventMachine.add_periodic_timer(10) do
+        puts "#{place}: Checking if ping needed"
 
-    ws.onmessage do |msg, type|
-      puts "Type: #{type}"
-      puts "Message: #{msg}"
-    end
+        if Time.zone.now > last_message_was_at + 180
+          puts "#{IDS[place]}: Pinging"
+          ws.ping('Au!')
+        end
+      end
 
-    ws.onclose do |code, reason|
-      puts "Close code: #{code}"
-      puts "Close reason: #{reason}"
-    end
+      ws.on :open do
+        ws.send "START Karting@#{IDS[place]}"
+        last_message_was_at = Time.zone.now
+      end
 
-    ws.onerror do |error|
-      puts "Error occured: #{error}"
-    end
+      ws.on :message do |event|
+        puts "Type: #{event.type}"
+        puts "Message: #{event.msg}"
+        last_message_was_at = Time.zone.now
+      end
 
-    ws.onping do |message|
-      puts "Ping received: #{message}"
-    end
+      ws.on :close do |event|
+        puts "#{place}: close"
+        raise "Disconnected with status code: #{event.code}, reason: #{event.reason}"
+      end
 
-    ws.onpong do |message|
-      puts "Pong received: #{message}"
-    end
+      ws.on :error do |event|
+        puts "#{place}: error"
+        raise "Disconnected by error with status code: #{event.code}, reason: #{event.reason}"
+      end
 
-    EventMachine.next_tick do
-      ws.send 'Hello Server!'
+      ws.on :pong do |event|
+        puts "#{place}: Pong received: #{event.data}"
+        last_message_was_at = Time.zone.now
+      end
     end
   end
+  raise 'Thread complite'
+rescue => e
+  puts e
+  sleep(60)
+  retry
 end
 
 puts 'Event machine init has finished'
