@@ -25,7 +25,7 @@ begin
       EventMachine.add_periodic_timer(10) do
         puts "#{place}: Checking if ping needed"
 
-        if Time.zone.now > last_message_was_at + 180
+        if Time.now > last_message_was_at + 180
           puts "#{IDS[place]}: Pinging"
           ws.ping('Au!')
         end
@@ -33,13 +33,12 @@ begin
 
       ws.on :open do
         ws.send "START Karting@#{IDS[place]}"
-        last_message_was_at = Time.zone.now
+        last_message_was_at = Time.now
       end
 
       ws.on :message do |event|
-        puts "Type: #{event.type}"
-        puts "Message: #{event.msg}"
-        last_message_was_at = Time.zone.now
+        puts "Message: #{event.data}"
+        last_message_was_at = Time.now
       end
 
       ws.on :close do |event|
@@ -54,7 +53,7 @@ begin
 
       ws.on :pong do |event|
         puts "#{place}: Pong received: #{event.data}"
-        last_message_was_at = Time.zone.now
+        last_message_was_at = Time.now
       end
     end
   end
